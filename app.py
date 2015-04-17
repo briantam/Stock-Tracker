@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter import messagebox
+import urllib.request
 
 class Application(Frame):
 	def __init__(self, root):
@@ -29,15 +30,16 @@ class Application(Frame):
 		self.newLabel.grid(row=1, column=0, sticky=E)
 		self.entry.insert(0, "Enter a stock ticker symbol")
 		self.entry.bind("<Button-1>", self.resetEntry)
+		self.entry.bind("<Return>", self.addStock)
 		self.entry.grid(row=1, column=1, columnspan=3)
 		self.addButton.grid(row=1, column=4)
 
 		#Add the frame that will display the portfolio widget
-		self.pFrame	= LabelFrame(self, text="Your Portfolio", font="Verdana 18", labelanchor=N)
+		self.pFrame	= LabelFrame(self, text="Your Portfolio", font="Verdana 18 bold", labelanchor=N)
 		self.pFrame.grid(columnspan=10, sticky=E+W)
 		self.pFrame.columnconfigure(0, weight=1)
 		
-		self.portfolio 	= Listbox(self.pFrame, height=15, font="Verdana 14")
+		self.portfolio 	= Listbox(self.pFrame, height=15, font="Verdana 14 bold")
 		self.portfolio["bg"] = "#b8dfd8"
 		self.portfolio["cursor"] = "hand2"
 		self.portfolio["bd"] = 2
@@ -46,7 +48,7 @@ class Application(Frame):
 		self.portfolio.grid(sticky=E+W, columnspan=10)
 
 
-		self.money = "#1ca64a"
+		self.money = "#008B00"
 		for i in range(10):
 			self.portfolio.insert(END, "Item " + str(i))
 			if i%2 == 0:
@@ -55,15 +57,58 @@ class Application(Frame):
 				self.portfolio.itemconfig(i, fg="red", selectbackground="red")
 
 
-	def addStock(self):
+	def addStock(self, event = None):
 		print("Adding new stock")
 
 		#Check for nothing or spaces
 		if self.entry.get().strip() == "":
-			messagebox.showwarning("Invalid Entry", "Enter a ticker symbol with no spaces")
+			messagebox.showwarning("No Entry", "Enter a valid stock ticker symbol")
 			self.entry.delete(0, END)
 		else:
-			print("Adding " + self.entry.get().strip())
+			company = self.entry.get().strip().upper()
+			print("Adding " + company)
+
+			query1 = "http://finance.yahoo.com/d/quotes.csv?s="
+			query2 = "&f=nl1c1p2"
+			response = urllib.request.urlopen(query1 + company + query2)
+			data = response.read()
+			text = data.decode()
+			print(text)			#Pass this to the Stock constructor for processing
+
+			text = text.strip()
+			text = text.replace("\"", "")
+			textList = text.split(",")
+			
+			if "Inc." in textList[1]:
+				del textList[1]
+
+			#Round price per share value
+			textList[1] = "{0:.2f}".format(float(textList[1]))
+
+			#Round the price change
+			textList[2] = "{0:.2f}".format(float(textList[2]))
+
+			#Round the price change percent
+			temp = textList[3].replace("%", "")
+			temp = "{0:.2f}".format(float(temp))
+			temp += "%"
+			textList[3] = temp
+
+			print(textList)
+			finalText = "\t".join(textList)
+			print(finalText)
+
+			self.portfolio.insert(END, finalText)
+			if float(textList[2]) > 0:
+				self.portfolio.itemconfig(END, fg=self.money, selectbackground="green")
+			elif float(textList[2]) < 0:
+				self.portfolio.itemconfig(END, fg="red", selectbackground="red")
+			else:
+				self.portfolio.itemconfig(END, fg="yellow", selectbackground="yellow")
+
+
+		#Clear the entry field after user adds stock
+		self.resetEntry(None)
 
 
 	def deleteStock(self):
