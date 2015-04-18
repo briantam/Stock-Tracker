@@ -1,6 +1,7 @@
+import urllib.request
 from tkinter import *
 from tkinter import messagebox
-import urllib.request
+from stock import Stock
 
 class Application(Frame):
 	def __init__(self, root):
@@ -35,79 +36,68 @@ class Application(Frame):
 		self.addButton.grid(row=1, column=4)
 
 		#Add the frame that will display the portfolio widget
-		self.pFrame	= LabelFrame(self, text="Your Portfolio", font="Verdana 18 bold", labelanchor=N)
+		self.pFrame	= LabelFrame(self, text="Your Portfolio", font="Consolas 18 bold", labelanchor=N)
 		self.pFrame.grid(columnspan=10, sticky=E+W)
 		self.pFrame.columnconfigure(0, weight=1)
 		
-		self.portfolio 	= Listbox(self.pFrame, height=15, font="Verdana 14 bold")
-		self.portfolio["bg"] = "#b8dfd8"
+		self.portfolio 	= Listbox(self.pFrame, height=15, font="Consolas 16 bold")
+		self.portfolio["bg"] = "#D4E9FF"	#"#b8dfd8"
 		self.portfolio["cursor"] = "hand2"
 		self.portfolio["bd"] = 2
 		self.portfolio["selectborderwidth"] = 5
 		self.portfolio["activestyle"] = "none"
 		self.portfolio.grid(sticky=E+W, columnspan=10)
 
-
-		self.money = "#008B00"
-		for i in range(10):
-			self.portfolio.insert(END, "Item " + str(i))
-			if i%2 == 0:
-				self.portfolio.itemconfig(i, fg=self.money, selectbackground="green")
-			else:
-				self.portfolio.itemconfig(i, fg="red", selectbackground="red")
+		#Some less GUI related variables that I will need
+		self.money = "#008B00"		#color for stocks that are positive
+		self.myPortfolio = []		#stores all the Stock objects in portfolio widget
 
 
+	#Handles all actions related to adding a new stock to portfolio
 	def addStock(self, event = None):
-		print("Adding new stock")
-
 		#Check for nothing or spaces
 		if self.entry.get().strip() == "":
 			messagebox.showwarning("No Entry", "Enter a valid stock ticker symbol")
 			self.entry.delete(0, END)
 		else:
+			#Make the API request and save the response
 			company = self.entry.get().strip().upper()
-			print("Adding " + company)
-
 			query1 = "http://finance.yahoo.com/d/quotes.csv?s="
 			query2 = "&f=nl1c1p2"
 			response = urllib.request.urlopen(query1 + company + query2)
 			data = response.read()
 			text = data.decode()
-			print(text)			#Pass this to the Stock constructor for processing
 
-			text = text.strip()
-			text = text.replace("\"", "")
-			textList = text.split(",")
-			
-			if "Inc." in textList[1]:
-				del textList[1]
+			#Invalid case
+			if "N/A" in text:
+				messagebox.showerror("Invalid Entry", "This stock does not exist" \
+					+ " or data could not be pulled for it.")
+			#Valid case
+			else:	
+				#Create a new stock object with the raw parameters for processing
+				newStock = Stock(company, text)
+				
+				#Check if stock is already in portfolio, else --> add it
+				for s in self.myPortfolio:
+					if s.getTicker() == newStock.getTicker():
+						messagebox.showwarning("Repeated Entry", "This stock is" \
+							+ " already in your portfolio")
+						self.resetEntry(None)
+						return
 
-			#Round price per share value
-			textList[1] = "{0:.2f}".format(float(textList[1]))
+				self.myPortfolio.append(newStock)
+				toDisplay = newStock.stringify()
+				
+				#Add to portfolio and determine color (gain/loss)
+				self.portfolio.insert(END, toDisplay[0])
+				if toDisplay[1] == "gain":
+					self.portfolio.itemconfig(END, fg=self.money, selectbackground="green")
+				elif toDisplay[1] == "loss":
+					self.portfolio.itemconfig(END, fg="red", selectbackground="red")
+				else:
+					self.portfolio.itemconfig(END, fg="#B2B200", selectbackground="yellow")
 
-			#Round the price change
-			textList[2] = "{0:.2f}".format(float(textList[2]))
-
-			#Round the price change percent
-			temp = textList[3].replace("%", "")
-			temp = "{0:.2f}".format(float(temp))
-			temp += "%"
-			textList[3] = temp
-
-			print(textList)
-			finalText = "\t".join(textList)
-			print(finalText)
-
-			self.portfolio.insert(END, finalText)
-			if float(textList[2]) > 0:
-				self.portfolio.itemconfig(END, fg=self.money, selectbackground="green")
-			elif float(textList[2]) < 0:
-				self.portfolio.itemconfig(END, fg="red", selectbackground="red")
-			else:
-				self.portfolio.itemconfig(END, fg="yellow", selectbackground="yellow")
-
-
-		#Clear the entry field after user adds stock
+		#Clear the entry field regardless
 		self.resetEntry(None)
 
 
@@ -140,6 +130,8 @@ class Application(Frame):
 	def save(self):
 		print("Saved!")
 
+		print(self.portfolio.size())
+
 
 	def close(self):
 		print("Quitting")
@@ -149,7 +141,7 @@ class Application(Frame):
 def main():
 	root = Tk()
 	root.title("Stock Widget")
-	root.geometry("340x510")
+	root.geometry("340x540")
 
 	app = Application(root)
 	root.mainloop()
