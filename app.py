@@ -48,6 +48,9 @@ class Application(Frame):
 		self.portfolio["activestyle"] = "none"
 		self.portfolio.grid(sticky=E+W, columnspan=10)
 
+		#Enables automatic refreshes every 30 seconds
+		self.after(30000, self.refreshWrapper)
+
 		#Some less GUI related variables that I will need
 		self.money = "#008B00"		#color for stocks that are positive
 		self.myPortfolio = []		#stores all the Stock objects in portfolio widget
@@ -76,7 +79,7 @@ class Application(Frame):
 			else:	
 				#Create a new stock object with the raw parameters for processing
 				newStock = Stock(company, text)
-				
+
 				#Check if stock is already in portfolio, else --> add it
 				for s in self.myPortfolio:
 					if s.getTicker() == newStock.getTicker():
@@ -84,12 +87,12 @@ class Application(Frame):
 							+ " already in your portfolio")
 						self.resetEntry(None)
 						return
-
 				self.myPortfolio.append(newStock)
 				toDisplay = newStock.stringify()
 				
 				#Add to portfolio and determine color (gain/loss)
 				self.portfolio.insert(END, toDisplay[0])
+				self.portfolio.see(END)
 				if toDisplay[1] == "gain":
 					self.portfolio.itemconfig(END, fg=self.money, selectbackground="green")
 				elif toDisplay[1] == "loss":
@@ -101,30 +104,72 @@ class Application(Frame):
 		self.resetEntry(None)
 
 
+	#Deleting a stock from the portfolio
 	def deleteStock(self):
-		print("Deleting stock")
-		print(self.portfolio.get(ACTIVE))
+		#Find the stock in portfolio and remove
+		ticker = self.portfolio.get(ACTIVE).split()[0]
+		for s in self.myPortfolio:
+			if s.getTicker() == ticker:
+				self.myPortfolio.remove(s)
 		
+		#Rehighlight the next stock
 		self.portfolio.delete(ACTIVE)
 		self.portfolio.selection_set(ACTIVE)
+
+
+	#Used when user refreshes portfolio OR portfolio is initialized by text file
+	def refresh(self):
+		print("refresh")
+		#Check if anything to refresh
+		if len(self.myPortfolio) == 0:
+			return
+		#Delete all current entries	
+		activeIndex = self.portfolio.index(ACTIVE)
+		self.portfolio.delete(0, END)
+
+		#Construct a chain of ticker symbols for the companies in the portfolio
+		companies = ""
+		for s in self.myPortfolio:
+			companies += s.getTicker() + "+"
+		companies = companies[:-1]
+
+		#Make one large API request and save the response
+		query1 = "http://finance.yahoo.com/d/quotes.csv?s="
+		query2 = "&f=nl1c1p2"
+		response = urllib.request.urlopen(query1 + companies + query2)
+		data = response.read()
+		text = data.decode()
+
+		#Update all the stocks
+		stockList = text.strip().split("\n")
+		for i in range(len(stockList)):
+			self.myPortfolio[i].update(stockList[i])
+
+		#Add the updated stocks back to the portfolio
+		for s in self.myPortfolio:
+			toDisplay = s.stringify()
+			self.portfolio.insert(END, toDisplay[0])
+			if toDisplay[1] == "gain":
+				self.portfolio.itemconfig(END, fg=self.money, selectbackground="green")
+			elif toDisplay[1] == "loss":
+				self.portfolio.itemconfig(END, fg="red", selectbackground="red")
+			else:
+				self.portfolio.itemconfig(END, fg="#B2B200", selectbackground="yellow")
+		self.portfolio.activate(activeIndex)
+		self.portfolio.selection_set(ACTIVE)
+		self.portfolio.see(ACTIVE)
+
+
+	#Used to enable automatic refresh
+	def refreshWrapper(self):
+		self.refresh()
+		self.after(30000, self.refreshWrapper)
 
 
 	#Event handler when user first clicks on the entry field
 	def resetEntry(self, event):
 		self.entry.delete(0,END)
 		self.entry["fg"] = "black"
-
-
-	def refresh(self):
-		print("Refresh!")
-
-		self.portfolio.delete(0, END)
-		for i in range(20):
-			self.portfolio.insert(END, "Item " + str(i))
-			if i%2 == 0:
-				self.portfolio.itemconfig(i, fg=self.money, selectbackground="green")
-			else:
-				self.portfolio.itemconfig(i, fg="red", selectbackground="red")
 
 
 	def save(self):
