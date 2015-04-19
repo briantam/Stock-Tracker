@@ -1,5 +1,10 @@
 class Stock(object):
-	def __init__(self, ticker, rawInfo):
+	def __init__(self, ticker, rawInfo = None):
+		#If creating stocks via the initialization file, only assign ticker
+		if rawInfo is None:
+			self.__ticker = ticker
+			return
+
 		#Parse the data
 		finalData = self.parseData(rawInfo)
 

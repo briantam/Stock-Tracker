@@ -7,6 +7,7 @@ class Application(Frame):
 	def __init__(self, root):
 		super().__init__(root)
 		self.grid()
+		root.protocol("WM_DELETE_WINDOW", self.close)	#Use my callback for closing
 
 		#First row of widgets
 		self.commandLabel	= Label(self, text="Commands:")
@@ -48,12 +49,23 @@ class Application(Frame):
 		self.portfolio["activestyle"] = "none"
 		self.portfolio.grid(sticky=E+W, columnspan=10)
 
-		#Enables automatic refreshes every 30 seconds
-		self.after(30000, self.refreshWrapper)
-
 		#Some less GUI related variables that I will need
 		self.money = "#008B00"		#color for stocks that are positive
 		self.myPortfolio = []		#stores all the Stock objects in portfolio widget
+		self.portFile = "portfolio.txt"	#input file
+		
+		#Try to initialize portfolio via input file if present
+		try:
+			f = open(self.portFile, "r")
+			for ticker in f:
+				self.myPortfolio.append(Stock(ticker.strip()))	#Use tickers only
+			f.close()
+			self.refresh()			#Refresh to update all stocks and the GUI
+		except FileNotFoundError:
+			pass
+
+		#Enables automatic refreshes every 30 seconds
+		self.after(30000, self.refreshWrapper)
 
 
 	#Handles all actions related to adding a new stock to portfolio
@@ -106,6 +118,10 @@ class Application(Frame):
 
 	#Deleting a stock from the portfolio
 	def deleteStock(self):
+		#Check if anything to delete
+		if len(self.myPortfolio) == 0:
+			return
+
 		#Find the stock in portfolio and remove
 		ticker = self.portfolio.get(ACTIVE).split()[0]
 		for s in self.myPortfolio:
@@ -172,20 +188,28 @@ class Application(Frame):
 		self.entry["fg"] = "black"
 
 
+	#When user explicitly saves the file
 	def save(self):
-		print("Saved!")
+		#Open the portfolio text file and save all the tickers
+		f = open(self.portFile, "w")
+		for s in self.myPortfolio:
+			print(s.getTicker(), file = f)
+		f.close()
+		
+		#Display success message
+		message = "Saved " + str(self.portfolio.size()) + " companies to your portfolio."
+		messagebox.showinfo("Saved!", message)
 
-		print(self.portfolio.size())
 
-
+	#When user explicitly presses my "close" button or [X] out of the window
 	def close(self):
-		print("Quitting")
-		self.quit()
+		if messagebox.askyesno("Quit", "Are you sure? Did you save first?"):
+			self.quit()
 
 
 def main():
 	root = Tk()
-	root.title("Stock Widget")
+	root.title("Stock Tracker")
 	root.geometry("340x540")
 
 	app = Application(root)
