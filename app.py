@@ -207,12 +207,12 @@ class Application(Frame):
 			self.quit()
 
 
-def main():
-	root = Tk()
-	root.title("Stock Tracker")
-	root.geometry("340x540")
+# def main():
+# 	root = Tk()
+# 	root.title("Stock Tracker")
+# 	root.geometry("340x540")
 
-	app = Application(root)
-	root.mainloop()
+# 	app = Application(root)
+# 	root.mainloop()
 
-main()
+# main()
