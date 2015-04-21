@@ -1,5 +1,7 @@
-from app import *
+from app import Application
+from tkinter import *
 
+#Driver
 def main():
 	root = Tk()
 	root.title("Stock Tracker")

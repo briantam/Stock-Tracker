@@ -135,7 +135,6 @@ class Application(Frame):
 
 	#Used when user refreshes portfolio OR portfolio is initialized by text file
 	def refresh(self):
-		print("refresh")
 		#Check if anything to refresh
 		if len(self.myPortfolio) == 0:
 			return
@@ -206,13 +205,3 @@ class Application(Frame):
 		if messagebox.askyesno("Quit", "Are you sure? Did you save first?"):
 			self.quit()
 
-
-# def main():
-# 	root = Tk()
-# 	root.title("Stock Tracker")
-# 	root.geometry("340x540")
-
-# 	app = Application(root)
-# 	root.mainloop()
-
-# main()
