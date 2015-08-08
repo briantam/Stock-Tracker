@@ -17,6 +17,8 @@ class Stock(object):
 
 		#Figure out the status (gain/loss/neutral)
 		if float(self.__changeNum) > 0:
+			self.__changeNum = '+' + self.__changeNum
+			self.__changePer = '+' + self.__changePer
 			self.__status = "gain"
 		elif float(self.__changeNum) < 0:
 			self.__status = "loss"
@@ -78,6 +80,8 @@ class Stock(object):
 
 		#Figure out the status (gain/loss/neutral)
 		if float(self.__changeNum) > 0:
+			self.__changeNum = '+' + self.__changeNum
+			self.__changePer = '+' + self.__changePer
 			self.__status = "gain"
 		elif float(self.__changeNum) < 0:
 			self.__status = "loss"
